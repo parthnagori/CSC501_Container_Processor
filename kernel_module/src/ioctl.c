@@ -62,7 +62,7 @@ struct container {
 //returns pointer to newly added container
 struct container * addcontainer(struct container **head, unsigned long long int cid)
 {
-    struct container* temp = kmalloc( sizeof(struct container), GFP_USER );
+    struct container* temp = kmalloc( sizeof(struct container), GFP_KERNEL );
     if (temp == NULL)
         return NULL;
     temp->cid = cid;
@@ -81,14 +81,14 @@ struct container * addcontainer(struct container **head, unsigned long long int 
         temp->next=temp2->next;
         temp2->next=temp;
     }
-    return temp;
+    return *head;
 }
 
 //Adding a new task to an already existing container's task list
 //returns pointer to the head of the list
 struct task * addtask(struct task **head,int pid)
 {
-    struct task *temp = kmalloc( sizeof(struct task), GFP_USER );
+    struct task *temp = kmalloc( sizeof(struct task), GFP_KERNEL );
     if (temp == NULL)
         return NULL;
     temp->pid= pid;
@@ -118,6 +118,28 @@ struct task * addtask(struct task **head,int pid)
  */
 int processor_container_delete(struct processor_container_cmd __user *user_cmd)
 {
+    // int pid = current->pid
+    // struct container *temp_container;
+    // temp_container = container_head;
+    // while(temp_container)
+    // {
+    //     struct task *temp_task = temp_container->task_list;
+    //     struct task *prev_task = NULL;
+    //     while(temp_task)
+    //     {
+    //         if (temp_task->pid == pid)
+    //         {
+    //             if(prev)
+    //                 prev->next = temp_task->next;
+    //             else
+    //             {
+    //                 temp_container->task_list = temp_task->next;
+    //             }
+    //             kfree(temp_task);
+    //         } 
+    //     }
+    // }
+
     return 0;
 }
 
@@ -147,6 +169,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
     temp_container = container_head;
     //Searching if a container is already present with the given cid
     //If yes add a new task to it's task list
+    int flag = 0;
     while(temp_container)
     {
         if (temp_container->cid == cid)
@@ -155,19 +178,29 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
             task_head = temp_container->task_list;
             task_head = addtask(&task_head, pid);
             temp_container->task_list = task_head;
-            return 0;
+            flag = 1;
         }
         temp_container=temp_container->next;
     }    
     
     //Create a new container if container not present, and add the current task to it's task list
-    temp_container = addcontainer(&container_head, cid);    
-    struct task *task_head;
-    task_head = temp_container->task_list;   
-    task_head = addtask(&task_head, pid);
-    temp_container->task_list = task_head;   
-
-
+    if (!flag)
+    {
+        container_head = addcontainer(&container_head, cid);    
+        temp_container = container_head;
+        while(temp_container)
+        {
+            if (temp_container->cid == cid)
+            {    
+                struct task *task_head;
+                task_head = temp_container->task_list;   
+                task_head = addtask(&task_head, pid);
+                temp_container->task_list = task_head;    
+            }
+            temp_container=temp_container->next
+        }
+    }
+       
     //Uncomment below code to see how tasks are getting allocated to containers
     struct container *tc = container_head;
     while(tc)
