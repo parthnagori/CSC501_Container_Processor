@@ -45,6 +45,71 @@
 #include <linux/sched.h>
 #include <linux/kthread.h>
 
+//Declaring a list to store task ids
+struct task{
+    int pid;
+    struct task *next;
+};
+
+//Declaring a list to store container ids and a pointer to associated task ids
+struct container {
+    unsigned long long int cid;
+    struct container *next;
+    struct task *task_list;
+}*container_head = NULL;
+
+//Adding a new container to the list of containers
+//returns pointer to newly added container
+struct container * addcontainer(struct container **head, unsigned long long int cid)
+{
+    struct container* temp = kmalloc( sizeof(struct container), GFP_USER );
+    if (temp == NULL)
+        return NULL;
+    temp->cid = cid;
+    temp->task_list = NULL;
+    if(*head == NULL)
+    {
+        temp->next = *head;
+        *head=temp;
+    }
+    else
+    {
+        struct container* temp2;
+        temp2= *head;
+        while(temp2->next)
+                temp2=temp2->next;
+        temp->next=temp2->next;
+        temp2->next=temp;
+    }
+    return temp;
+}
+
+//Adding a new task to an already existing container's task list
+//returns pointer to the head of the list
+struct task * addtask(struct task **head,int pid)
+{
+    struct task *temp = kmalloc( sizeof(struct task), GFP_USER );
+    if (temp == NULL)
+        return NULL;
+    temp->pid= pid;
+    if(*head == NULL)
+    {
+        temp->next = *head;
+        *head=temp;
+    }
+    else
+    {
+        struct task* temp2;
+        temp2= *head;
+        while(temp2->next)
+                temp2=temp2->next;
+        temp->next=temp2->next;
+        temp2->next=temp;
+    }
+    return *head;
+}
+
+
 /**
  * Delete the task in the container.
  * 
@@ -66,6 +131,56 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
  */
 int processor_container_create(struct processor_container_cmd __user *user_cmd)
 {
+
+    struct processor_container_cmd temp_cmd;
+    copy_from_user(&temp_cmd, user_cmd, sizeof(struct processor_container_cmd));
+    
+    //Setting calling thread's associated cid
+    unsigned long long int cid = temp_cmd.cid;
+    //Setting callinf thread's associated pid
+    int pid = current->pid;
+    
+    // printk("\nCID: %llu", cid);
+    // printk("\nPID: %d", current->pid);
+
+    struct container *temp_container;
+    temp_container = container_head;
+    //Searching if a container is already present with the given cid
+    //If yes add a new task to it's task list
+    while(temp_container)
+    {
+        if (temp_container->cid == cid)
+        {
+            struct task *task_head;
+            task_head = temp_container->task_list;
+            task_head = addtask(&task_head, pid);
+            temp_container->task_list = task_head;
+            return 0;
+        }
+        temp_container=temp_container->next;
+    }    
+    
+    //Create a new container if container not present, and add the current task to it's task list
+    temp_container = addcontainer(&container_head, cid);    
+    struct task *task_head;
+    task_head = temp_container->task_list;   
+    task_head = addtask(&task_head, pid);
+    temp_container->task_list = task_head;   
+
+
+    //Uncomment below code to see how tasks are getting allocated to containers
+    struct container *tc = container_head;
+    while(tc)
+    {
+        struct task *tl = tc->task_list;
+        while(tl)
+        {
+            printk("\n CID : %uul ----  PID : %d", tc->cid, tl->pid);
+            tl=tl->next;
+        }
+        tc = tc->next;
+    }
+
     return 0;
 }
 
@@ -77,6 +192,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
  */
 int processor_container_switch(struct processor_container_cmd __user *user_cmd)
 {
+
     return 0;
 }
 
