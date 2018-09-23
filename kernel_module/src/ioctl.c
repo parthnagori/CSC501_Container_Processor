@@ -64,7 +64,10 @@ struct container * addcontainer(struct container **head, unsigned long long int 
 {
     struct container* temp = kmalloc( sizeof(struct container), GFP_KERNEL );
     if (temp == NULL)
-        return NULL;
+    {
+        printk("Not enough memory to add container : %uul", cid);
+        return *head;
+    }
     temp->cid = cid;
     temp->task_list = NULL;
     if(*head == NULL)
@@ -90,7 +93,11 @@ struct task * addtask(struct task **head,int pid)
 {
     struct task *temp = kmalloc( sizeof(struct task), GFP_KERNEL );
     if (temp == NULL)
-        return NULL;
+    {
+        printk("Not enough memory to add task : %d", pid);
+        return *head;
+    }    
+        
     temp->pid= pid;
     if(*head == NULL)
     {
@@ -110,6 +117,62 @@ struct task * addtask(struct task **head,int pid)
 }
 
 
+struct container * deletecontainer(struct container **head, int cid)
+{
+    struct container* temp_head, *prev;
+    temp_head = *head;
+    if (temp_head != NULL && temp_head->cid == cid) 
+        { 
+            *head = temp_head->next;   
+            kfree(temp_head);         
+            return *head; 
+        }
+
+    while (temp_head != NULL && temp_head->cid != cid) 
+    { 
+        prev = temp_head; 
+        temp_head = temp_head->next; 
+    } 
+   
+    if (temp == NULL) 
+    {
+        printk("\nContainer not found : %uul", cid);
+        return *head;
+    } 
+
+    prev->next = temp_head->next; 
+    kfree(temp_head);
+    return *head;
+}
+
+struct task * deletetask(struct task **head, int pid)
+{
+    struct task* temp_head, *prev;
+    temp_head = *head;
+    if (temp_head != NULL && temp_head->pip == pid) 
+        { 
+            *head = temp_head->next;   
+            kfree(temp_head);         
+            return *head; 
+        }
+
+    while (temp_head != NULL && temp_head->pid != pid) 
+    { 
+        prev = temp_head; 
+        temp_head = temp_head->next; 
+    } 
+   
+    if (temp == NULL) 
+    {
+        printk("\nContainer not found : %uul", pid);
+        return *head;
+    } 
+    
+    prev->next = temp_head->next; 
+    kfree(temp_head);
+    return *head;
+}
+
 /**
  * Delete the task in the container.
  * 
@@ -118,28 +181,31 @@ struct task * addtask(struct task **head,int pid)
  */
 int processor_container_delete(struct processor_container_cmd __user *user_cmd)
 {
-    // int pid = current->pid
-    // struct container *temp_container;
-    // temp_container = container_head;
-    // while(temp_container)
-    // {
-    //     struct task *temp_task = temp_container->task_list;
-    //     struct task *prev_task = NULL;
-    //     while(temp_task)
-    //     {
-    //         if (temp_task->pid == pid)
-    //         {
-    //             if(prev)
-    //                 prev->next = temp_task->next;
-    //             else
-    //             {
-    //                 temp_container->task_list = temp_task->next;
-    //             }
-    //             kfree(temp_task);
-    //         } 
-    //     }
-    // }
+    struct processor_container_cmd temp_cmd;
+    copy_from_user(&temp_cmd, user_cmd, sizeof(struct processor_container_cmd));
+    
+    //Setting calling thread's associated cid
+    unsigned long long int cid = temp_cmd.cid;
+    //Setting calling thread's associated pid
+    int pid = current->pid;
 
+    temp_container = container_head;
+    while(temp_container)
+    {
+        if (temp_container->cid == cid)
+        {    
+            struct task *temp_task_head = temp_container->task_list;
+            temp_task_head = deletetask(&temp_task_head, pid); 
+            printk("\n Task deleted : %d within Container : %uul", pid, cid);
+            temp_container->task_list = temp_task_head; 
+            if (!temp_task_head){
+                container_head = deletecontainer(&temp_container, cid);
+                printk("\n Container Deleted : %uul", cid);
+                break;
+            }
+        }
+        temp_container = temp_container->next;
+    }
     return 0;
 }
 
@@ -159,7 +225,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
     
     //Setting calling thread's associated cid
     unsigned long long int cid = temp_cmd.cid;
-    //Setting callinf thread's associated pid
+    //Setting calling thread's associated pid
     int pid = current->pid;
     
     // printk("\nCID: %llu", cid);
@@ -179,6 +245,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
             task_head = addtask(&task_head, pid);
             temp_container->task_list = task_head;
             flag = 1;
+            break;
         }
         temp_container=temp_container->next;
     }    
@@ -195,13 +262,15 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
                 struct task *task_head;
                 task_head = temp_container->task_list;   
                 task_head = addtask(&task_head, pid);
-                temp_container->task_list = task_head;    
+                temp_container->task_list = task_head;
+                break;    
             }
             temp_container=temp_container->next;
         }
     }
        
     //Uncomment below code to see how tasks are getting allocated to containers
+    printk("\nCreating task : CID -> %uul --- PID -> %d", cid, pid);
     struct container *tc = container_head;
     while(tc)
     {
