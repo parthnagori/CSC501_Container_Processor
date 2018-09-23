@@ -188,6 +188,23 @@ void display_list()
     }
 }
 
+struct task * get_next_task(struct task **head, int pid)
+{
+   struct task* temp_head;
+   temp_head = *head; 
+   while(temp_head)
+   {
+        if (temp_head->pid == pid)
+        {
+            if (temp_head->next)
+                return temp_head->next;
+            else
+                return *head;
+        }
+        temp_head=temp_head->next;
+   }  
+}
+
 /**
  * Delete the task in the container.
  * 
@@ -302,7 +319,29 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
  */
 int processor_container_switch(struct processor_container_cmd __user *user_cmd)
 {
+    struct processor_container_cmd temp_cmd;
+    copy_from_user(&temp_cmd, user_cmd, sizeof(struct processor_container_cmd));
+    
+    //Setting calling thread's associated cid and pid
+    unsigned long long int cid = temp_cmd.cid;
+    int pid = current->pid;
 
+    struct task *temp_task_head;
+    struct container *temp_container;
+    temp_container = container_head;
+    while(temp_container)
+    {
+        if (temp_container->cid == cid)
+        {
+                temp_task_head = temp_container->task_list;
+                break;
+        }
+        temp_container=temp_container->next;        
+    }
+
+    struct task *next_task;
+    next_task = get_next_task(&temp_task_head, pid);
+    printk("\n Switching from PID: %d to PID: %d in CID: %uul", pid, next_task->pid, cid);
     return 0;
 }
 
