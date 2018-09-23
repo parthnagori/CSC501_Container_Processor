@@ -173,7 +173,7 @@ struct task * deletetask(struct task **head, int pid)
     return *head;
 }
 
-void display_list()
+void display_list(void)
 {
     struct container *tc = container_head;
     while(tc)
