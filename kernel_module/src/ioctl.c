@@ -197,7 +197,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
                 task_head = addtask(&task_head, pid);
                 temp_container->task_list = task_head;    
             }
-            temp_container=temp_container->next
+            temp_container=temp_container->next;
         }
     }
        
