@@ -173,6 +173,21 @@ struct task * deletetask(struct task **head, int pid)
     return *head;
 }
 
+void display_list()
+{
+    struct container *tc = container_head;
+    while(tc)
+    {
+        struct task *tl = tc->task_list;
+        while(tl)
+        {
+            printk("\n CID : %uul ----  PID : %d", tc->cid, tl->pid);
+            tl=tl->next;
+        }
+        tc = tc->next;
+    }
+}
+
 /**
  * Delete the task in the container.
  * 
@@ -207,6 +222,8 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
         }
         temp_container = temp_container->next;
     }
+    printk("\nDeleting task : CID -> %uul --- PID -> %d", cid, pid);
+    display_list();
     return 0;
 }
 
@@ -272,17 +289,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
        
     //Uncomment below code to see how tasks are getting allocated to containers
     printk("\nCreating task : CID -> %uul --- PID -> %d", cid, pid);
-    struct container *tc = container_head;
-    while(tc)
-    {
-        struct task *tl = tc->task_list;
-        while(tl)
-        {
-            printk("\n CID : %uul ----  PID : %d", tc->cid, tl->pid);
-            tl=tl->next;
-        }
-        tc = tc->next;
-    }
+    display_list();
 
     return 0;
 }
