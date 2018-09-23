@@ -134,7 +134,7 @@ struct container * deletecontainer(struct container **head, int cid)
         temp_head = temp_head->next; 
     } 
    
-    if (temp == NULL) 
+    if (temp_head == NULL) 
     {
         printk("\nContainer not found : %uul", cid);
         return *head;
@@ -149,7 +149,7 @@ struct task * deletetask(struct task **head, int pid)
 {
     struct task* temp_head, *prev;
     temp_head = *head;
-    if (temp_head != NULL && temp_head->pip == pid) 
+    if (temp_head != NULL && temp_head->pid == pid) 
         { 
             *head = temp_head->next;   
             kfree(temp_head);         
@@ -162,7 +162,7 @@ struct task * deletetask(struct task **head, int pid)
         temp_head = temp_head->next; 
     } 
    
-    if (temp == NULL) 
+    if (temp_head == NULL) 
     {
         printk("\nContainer not found : %uul", pid);
         return *head;
@@ -189,6 +189,7 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
     //Setting calling thread's associated pid
     int pid = current->pid;
 
+    struct container *temp_container;
     temp_container = container_head;
     while(temp_container)
     {
