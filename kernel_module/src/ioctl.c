@@ -250,12 +250,16 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
             struct task *temp_task_head = temp_container->task_list;
             struct task *next_task;
             next_task = get_next_task(&temp_task_head, pid);
-            if (next_task)
-                printk("\nWaking next task PID: %d before dying", next_task->currTask->pid);
-            else
-                printk("\nNo next task before dying - who to kill then");
-            mutex_unlock(&my_mutex);
-            wake_up_process(next_task->currTask);
+            if (next_task->currTask->pid != pid)
+            {    
+                printk("\n PID: %d Waking next task PID: %d in CID: %llu before dying", pid, next_task->currTask->pid, cid);
+                mutex_unlock(&my_mutex);
+                wake_up_process(next_task->currTask);
+            }
+            else{
+                printk("\n No next tasks for PID: %d in CID: %llu - killing self", pid, cid);
+                mutex_unlock(&my_mutex);
+            }
             temp_task_head = deletetask(&temp_task_head, pid);
             printk("\n Task deleted : %d within Container : %llu", pid, cid); 
             temp_container->task_list = temp_task_head;
@@ -387,7 +391,7 @@ int processor_container_switch(struct processor_container_cmd __user *user_cmd)
         }
         else
         {
-            printk("\nNo other task in container to wake.");
+            printk("\nNo other task in container to wake for PID: %d", pid);
             mutex_unlock(&my_mutex);
         }
     }
