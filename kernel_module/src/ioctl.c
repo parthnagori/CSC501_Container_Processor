@@ -376,7 +376,7 @@ int processor_container_switch(struct processor_container_cmd __user *user_cmd)
         mutex_unlock(&my_mutex);
         if (next_task->currTask->pid != pid)
         {
-            printk("\nNo other task in container to wake.")
+            printk("\nNo other task in container to wake.");
             wake_up_process(next_task->currTask);
             set_current_state(TASK_INTERRUPTIBLE);
             schedule();        
