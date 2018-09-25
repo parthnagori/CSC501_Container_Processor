@@ -257,7 +257,7 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
             temp_container->task_list = temp_task_head;
             if (!temp_task_head)
             {
-                container_head = deletecontainer(&temp_container, cid);
+                container_head = deletecontainer(&container_head, cid);
                 printk("\n Container Deleted : %llu", cid);
                 break;
             }
@@ -311,6 +311,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
     }    
     
     //Create a new container if container not present, and add the current task to it's task list
+    //Keep this task awake in the container
     if (!flag)
     {
         container_head = addcontainer(&container_head, cid);    
@@ -334,7 +335,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
     }
     else
     {
-        //Uncomment below code to see how tasks are getting allocated to containers
+        //If Container was already present, then put all incoming tasks to sleep.
         printk("\nCreating task : CID -> %llu --- PID -> %d", cid, pid);
         display_list();
         printk("\nInitial Set to Sleep PID: %d in CID: %llu",pid,cid);
