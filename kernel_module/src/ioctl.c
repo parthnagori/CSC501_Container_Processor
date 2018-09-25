@@ -45,9 +45,10 @@
 #include <linux/sched.h>
 #include <linux/kthread.h>
 
+
 //Declaring a list to store task ids
 struct task{
-    int pid;
+    struct task_struct* currTask;
     struct task *next;
 };
 
@@ -57,6 +58,11 @@ struct container {
     struct container *next;
     struct task *task_list;
 }*container_head = NULL;
+
+//Declaring a mutex variable
+// struct mutex my_mutex;
+// mutex_init(&my_mutex);
+
 
 //Adding a new container to the list of containers
 //returns pointer to newly added container
@@ -89,16 +95,16 @@ struct container * addcontainer(struct container **head, unsigned long long int 
 
 //Adding a new task to an already existing container's task list
 //returns pointer to the head of the list
-struct task * addtask(struct task **head,int pid)
+struct task * addtask(struct task **head, struct task_struct* currTask)
 {
     struct task *temp = kmalloc( sizeof(struct task), GFP_KERNEL );
     if (temp == NULL)
     {
-        printk("Not enough memory to add task : %d", pid);
+        printk("Not enough memory to add task : %d", currTask->pid);
         return *head;
     }    
         
-    temp->pid= pid;
+    temp->currTask = currTask;
     if(*head == NULL)
     {
         temp->next = *head;
@@ -117,7 +123,7 @@ struct task * addtask(struct task **head,int pid)
 }
 
 
-struct container * deletecontainer(struct container **head, int cid)
+struct container * deletecontainer(struct container **head, unsigned long long int cid)
 {
     struct container* temp_head, *prev;
     temp_head = *head;
@@ -149,14 +155,14 @@ struct task * deletetask(struct task **head, int pid)
 {
     struct task* temp_head, *prev;
     temp_head = *head;
-    if (temp_head != NULL && temp_head->pid == pid) 
+    if (temp_head != NULL && temp_head->currTask->pid == pid) 
         { 
             *head = temp_head->next;   
             kfree(temp_head);         
             return *head; 
         }
 
-    while (temp_head != NULL && temp_head->pid != pid) 
+    while (temp_head != NULL && temp_head->currTask->pid != pid) 
     { 
         prev = temp_head; 
         temp_head = temp_head->next; 
@@ -164,7 +170,7 @@ struct task * deletetask(struct task **head, int pid)
    
     if (temp_head == NULL) 
     {
-        printk("\nContainer not found : %llu", pid);
+        printk("\nTask not found : %d", pid);
         return *head;
     } 
     
@@ -181,7 +187,7 @@ void display_list(void)
         struct task *tl = tc->task_list;
         while(tl)
         {
-            printk("\n CID : %llu ----  PID : %d", tc->cid, tl->pid);
+            printk("\n CID : %llu ----  PID : %d", tc->cid, tl->currTask->pid);
             tl=tl->next;
         }
         tc = tc->next;
@@ -194,7 +200,7 @@ struct task * get_next_task(struct task **head, int pid)
    temp_head = *head; 
    while(temp_head)
    {
-        if (temp_head->pid == pid)
+        if (temp_head->currTask->pid == pid)
         {
             if (temp_head->next)
                 return temp_head->next;
@@ -202,7 +208,8 @@ struct task * get_next_task(struct task **head, int pid)
                 return *head;
         }
         temp_head=temp_head->next;
-   }  
+   }
+   return *head;  
 }
 
 /**
@@ -255,6 +262,9 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
 int processor_container_create(struct processor_container_cmd __user *user_cmd)
 {
 
+    //Mutex Lock
+    // mutex_lock(&my_mutex);
+
     struct processor_container_cmd temp_cmd;
     copy_from_user(&temp_cmd, user_cmd, sizeof(struct processor_container_cmd));
     
@@ -277,7 +287,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
         {
             struct task *task_head;
             task_head = temp_container->task_list;
-            task_head = addtask(&task_head, pid);
+            task_head = addtask(&task_head, current);
             temp_container->task_list = task_head;
             flag = 1;
             break;
@@ -296,19 +306,27 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
             {    
                 struct task *task_head;
                 task_head = temp_container->task_list;   
-                task_head = addtask(&task_head, pid);
+                task_head = addtask(&task_head, current);
                 temp_container->task_list = task_head;
                 break;    
             }
             temp_container=temp_container->next;
         }
     }
+    else
+    {
+        //printk("\nSet to Sleep PID: %d in CID: %llu",pid,cid);
+        // set_current_state(TASK_INTERRUPTIBLE);
+        // schedule();
+    }
        
     //Uncomment below code to see how tasks are getting allocated to containers
     printk("\nCreating task : CID -> %llu --- PID -> %d", cid, pid);
     display_list();
 
+    // mutex_unlock(&my_mutex);
     return 0;
+    
 }
 
 /**
@@ -319,6 +337,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
  */
 int processor_container_switch(struct processor_container_cmd __user *user_cmd)
 {
+    // mutex_lock(&my_mutex);
     struct processor_container_cmd temp_cmd;
     copy_from_user(&temp_cmd, user_cmd, sizeof(struct processor_container_cmd));
     
@@ -339,9 +358,17 @@ int processor_container_switch(struct processor_container_cmd __user *user_cmd)
         temp_container=temp_container->next;        
     }
 
-    struct task *next_task;
-    next_task = get_next_task(&temp_task_head, pid);
-    printk("\n Switching from PID: %d to PID: %d in CID: %llu", pid, next_task->pid, cid);
+    if (temp_task_head)
+    {
+        struct task *next_task;
+        next_task = get_next_task(&temp_task_head, pid);
+        // mutex_unlock(&my_mutex);
+        // wake_up_process(next_task);
+        // schedule();
+        printk("\n Switching from PID: %d to PID: %d in CID: %llu", pid, next_task->currTask->pid, cid);
+    }
+    else
+        printk("\nTask for PID: %d not found in CID: %llu", pid, cid);
     return 0;
 }
 
