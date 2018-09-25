@@ -250,6 +250,10 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
             struct task *temp_task_head = temp_container->task_list;
             struct task *next_task;
             next_task = get_next_task(&temp_task_head, pid);
+            if (next_task)
+                printk("\nWaking next task PID: %d before dying", next_task->currTask->pid);
+            else
+                printk("\nNo next task before dying - who to kill then");
             mutex_unlock(&my_mutex);
             wake_up_process(next_task->currTask);
             temp_task_head = deletetask(&temp_task_head, pid);
