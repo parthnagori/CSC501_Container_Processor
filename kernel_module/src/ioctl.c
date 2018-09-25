@@ -248,6 +248,7 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
         if (temp_container->cid == cid)
         {    
             struct task *temp_task_head = temp_container->task_list;
+            struct task *next_task;
             next_task = get_next_task(&temp_task_head, pid);
             mutex_unlock(&my_mutex);
             wake_up_process(next_task->currTask);
