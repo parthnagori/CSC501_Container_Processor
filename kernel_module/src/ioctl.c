@@ -60,8 +60,8 @@ struct container {
 }*container_head = NULL;
 
 //Declaring a mutex variable
-// struct mutex my_mutex;
-// mutex_init(&my_mutex);
+struct mutex my_mutex;
+mutex_init(&my_mutex);
 
 
 //Adding a new container to the list of containers
@@ -220,6 +220,7 @@ struct task * get_next_task(struct task **head, int pid)
  */
 int processor_container_delete(struct processor_container_cmd __user *user_cmd)
 {
+    mutex_lock(&my_mutex);
     struct processor_container_cmd temp_cmd;
     copy_from_user(&temp_cmd, user_cmd, sizeof(struct processor_container_cmd));
     
@@ -248,6 +249,7 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
     }
     printk("\nDeleting task : CID -> %llu --- PID -> %d", cid, pid);
     display_list();
+    mutex_unlock(&my_mutex);
     return 0;
 }
 
@@ -263,7 +265,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
 {
 
     //Mutex Lock
-    // mutex_lock(&my_mutex);
+    mutex_lock(&my_mutex);
 
     struct processor_container_cmd temp_cmd;
     copy_from_user(&temp_cmd, user_cmd, sizeof(struct processor_container_cmd));
@@ -272,9 +274,6 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
     unsigned long long int cid = temp_cmd.cid;
     //Setting calling thread's associated pid
     int pid = current->pid;
-    
-    // printk("\nCID: %llu", cid);
-    // printk("\nPID: %d", current->pid);
 
     struct container *temp_container;
     temp_container = container_head;
@@ -315,16 +314,16 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
     }
     else
     {
-        //printk("\nSet to Sleep PID: %d in CID: %llu",pid,cid);
-        // set_current_state(TASK_INTERRUPTIBLE);
-        // schedule();
+        printk("\nInitial Set to Sleep PID: %d in CID: %llu",pid,cid);
+        set_current_state(TASK_INTERRUPTIBLE);
+        schedule();
     }
        
     //Uncomment below code to see how tasks are getting allocated to containers
     printk("\nCreating task : CID -> %llu --- PID -> %d", cid, pid);
     display_list();
 
-    // mutex_unlock(&my_mutex);
+    mutex_unlock(&my_mutex);
     return 0;
     
 }
@@ -337,7 +336,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
  */
 int processor_container_switch(struct processor_container_cmd __user *user_cmd)
 {
-    // mutex_lock(&my_mutex);
+    mutex_lock(&my_mutex);
     struct processor_container_cmd temp_cmd;
     copy_from_user(&temp_cmd, user_cmd, sizeof(struct processor_container_cmd));
     
@@ -362,10 +361,11 @@ int processor_container_switch(struct processor_container_cmd __user *user_cmd)
     {
         struct task *next_task;
         next_task = get_next_task(&temp_task_head, pid);
-        // mutex_unlock(&my_mutex);
-        // wake_up_process(next_task);
-        // schedule();
-        printk("\n Switching from PID: %d to PID: %d in CID: %llu", pid, next_task->currTask->pid, cid);
+        mutex_unlock(&my_mutex);
+        wake_up_process(next_task->currTask);
+        set_current_state(TASK_INTERRUPTIBLE);
+        schedule();
+        printk("\n Sleeping PID: %d -- Waking PID: %d in CID: %llu", pid, next_task->currTask->pid, cid);
     }
     else
         printk("\nTask for PID: %d not found in CID: %llu", pid, cid);
