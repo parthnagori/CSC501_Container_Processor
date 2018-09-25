@@ -367,6 +367,7 @@ int processor_container_switch(struct processor_container_cmd __user *user_cmd)
         wake_up_process(next_task->currTask);
         set_current_state(TASK_INTERRUPTIBLE);
         schedule();
+        printk("\nInside Switch with PID : %d", pid);
         printk("\n Sleeping PID: %d -- Waking PID: %d in CID: %llu", pid, next_task->currTask->pid, cid);
     }
     else
