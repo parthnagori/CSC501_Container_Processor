@@ -248,10 +248,14 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
         if (temp_container->cid == cid)
         {    
             struct task *temp_task_head = temp_container->task_list;
-            temp_task_head = deletetask(&temp_task_head, pid); 
-            printk("\n Task deleted : %d within Container : %llu", pid, cid);
-            temp_container->task_list = temp_task_head; 
-            if (!temp_task_head){
+            next_task = get_next_task(&temp_task_head, pid);
+            mutex_unlock(&my_mutex);
+            wake_up_process(next_task->currTask);
+            temp_task_head = deletetask(&temp_task_head, pid);
+            printk("\n Task deleted : %d within Container : %llu", pid, cid); 
+            temp_container->task_list = temp_task_head;
+            if (!temp_task_head)
+            {
                 container_head = deletecontainer(&temp_container, cid);
                 printk("\n Container Deleted : %llu", cid);
                 break;
@@ -261,7 +265,6 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
     }
     printk("\nDeleting task : CID -> %llu --- PID -> %d", cid, pid);
     display_list();
-    mutex_unlock(&my_mutex);
     return 0;
 }
 
@@ -368,14 +371,14 @@ int processor_container_switch(struct processor_container_cmd __user *user_cmd)
     if (next_task)
     {    
         printk("\nInside Switch with PID : %d", pid);
-        printk("\n Sleeping PID: %d -- Waking PID: %d in CID: %llu", pid, next_task->currTask->pid, cid);
+        printk("\n Sleeping PID: %d -- Waking PID: %d", pid, next_task->currTask->pid);
         mutex_unlock(&my_mutex);
         wake_up_process(next_task->currTask);
         set_current_state(TASK_INTERRUPTIBLE);
         schedule();        
     }
     else
-        printk("\nTask for PID: %d not found in CID: %llu", pid, cid);
+        printk("\nTask for PID: %d not found", pid);
     return 0;
 }
 
