@@ -194,20 +194,34 @@ void display_list(void)
 
 struct task * get_next_task(struct task **head, int pid)
 {
-   struct task* temp_head;
-   temp_head = *head; 
-   while(temp_head)
-   {
-        if (temp_head->currTask->pid == pid)
+    struct container *temp_container;
+    temp_container = container_head;
+    struct task* temp_task_head;
+    int tflag = 0;
+
+    while(temp_container)
+    {
+        temp_task_head = temp_container->task_list;
+        while(temp_task_head)
         {
-            if (temp_head->next)
-                return temp_head->next;
-            else
-                return *head;
+            if (temp_task_head->currTask->pid == pid)
+                {
+                    tflag = 1;
+                    break;
+                }
+            temp_task_head=temp_task_head->next;
         }
-        temp_head=temp_head->next;
-   }
-   return *head;  
+        if (tflag)
+            break;
+        temp_container=temp_container->next;        
+    }
+
+    
+    
+    if (temp_task_head->next)
+        return temp_task_head->next;
+    else
+        return temp_container->task_list;  
 }
 
 /**
@@ -312,6 +326,7 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
         //Uncomment below code to see how tasks are getting allocated to containers
         printk("\nCreating task : CID -> %llu --- PID -> %d", cid, pid);
         display_list();
+        mutex_unlock(&my_mutex);
     }
     else
     {
@@ -320,12 +335,10 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
         display_list();
         printk("\nInitial Set to Sleep PID: %d in CID: %llu",pid,cid);
         set_current_state(TASK_INTERRUPTIBLE);
+        mutex_unlock(&my_mutex);
         schedule();
     }
        
-    
-
-    mutex_unlock(&my_mutex);
     return 0;
     
 }
@@ -349,20 +362,11 @@ int processor_container_switch(struct processor_container_cmd __user *user_cmd)
     struct task *temp_task_head;
     struct container *temp_container;
     temp_container = container_head;
-    while(temp_container)
-    {
-        if (temp_container->cid == cid)
-        {
-                temp_task_head = temp_container->task_list;
-                break;
-        }
-        temp_container=temp_container->next;        
-    }
-
-    if (temp_task_head)
-    {
-        struct task *next_task;
-        next_task = get_next_task(&temp_task_head, pid);
+    
+    struct task *next_task;
+    next_task = get_next_task(&temp_task_head, pid);
+    if (next_task)
+    {    
         mutex_unlock(&my_mutex);
         wake_up_process(next_task->currTask);
         set_current_state(TASK_INTERRUPTIBLE);
