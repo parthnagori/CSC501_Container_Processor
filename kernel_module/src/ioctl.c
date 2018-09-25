@@ -374,9 +374,13 @@ int processor_container_switch(struct processor_container_cmd __user *user_cmd)
         printk("\nInside Switch with PID : %d", pid);
         printk("\n Sleeping PID: %d -- Waking PID: %d", pid, next_task->currTask->pid);
         mutex_unlock(&my_mutex);
-        wake_up_process(next_task->currTask);
-        set_current_state(TASK_INTERRUPTIBLE);
-        schedule();        
+        if (next_task->currTask->pid != pid)
+        {
+            printk("\nNo other task in container to wake.")
+            wake_up_process(next_task->currTask);
+            set_current_state(TASK_INTERRUPTIBLE);
+            schedule();        
+        }
     }
     else
         printk("\nTask for PID: %d not found", pid);
