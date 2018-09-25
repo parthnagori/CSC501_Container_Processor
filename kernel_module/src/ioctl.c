@@ -60,9 +60,7 @@ struct container {
 }*container_head = NULL;
 
 //Declaring a mutex variable
-struct mutex my_mutex;
-mutex_init(&my_mutex);
-
+DEFINE_MUTEX(my_mutex);
 
 //Adding a new container to the list of containers
 //returns pointer to newly added container
@@ -311,17 +309,21 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
             }
             temp_container=temp_container->next;
         }
+        //Uncomment below code to see how tasks are getting allocated to containers
+        printk("\nCreating task : CID -> %llu --- PID -> %d", cid, pid);
+        display_list();
     }
     else
     {
+        //Uncomment below code to see how tasks are getting allocated to containers
+        printk("\nCreating task : CID -> %llu --- PID -> %d", cid, pid);
+        display_list();
         printk("\nInitial Set to Sleep PID: %d in CID: %llu",pid,cid);
         set_current_state(TASK_INTERRUPTIBLE);
         schedule();
     }
        
-    //Uncomment below code to see how tasks are getting allocated to containers
-    printk("\nCreating task : CID -> %llu --- PID -> %d", cid, pid);
-    display_list();
+    
 
     mutex_unlock(&my_mutex);
     return 0;
