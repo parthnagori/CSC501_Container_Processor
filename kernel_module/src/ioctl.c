@@ -185,7 +185,7 @@ void display_list(void)
         struct task *tl = tc->task_list;
         while(tl)
         {
-            printk("\n CID : %llu ----  PID : %d", tc->cid, tl->currTask->pid);
+            printk("\n CID : %llu ----  PID : %d State: %d", tc->cid, tl->currTask->pid, tl->currTask->state);
             tl=tl->next;
         }
         tc = tc->next;
@@ -253,8 +253,8 @@ int processor_container_delete(struct processor_container_cmd __user *user_cmd)
             if (next_task->currTask->pid != pid)
             {    
                 printk("\n PID: %d Waking next task PID: %d in CID: %llu before dying", pid, next_task->currTask->pid, cid);
-                mutex_unlock(&my_mutex);
                 wake_up_process(next_task->currTask);
+                mutex_unlock(&my_mutex);                
             }
             else{
                 printk("\n No next tasks for PID: %d in CID: %llu - killing self", pid, cid);
@@ -345,9 +345,9 @@ int processor_container_create(struct processor_container_cmd __user *user_cmd)
     {
         //If Container was already present, then put all incoming tasks to sleep.
         printk("\nCreating task : CID -> %llu --- PID -> %d", cid, pid);
-        display_list();
         printk("\nInitial Set to Sleep PID: %d in CID: %llu",pid,cid);
         set_current_state(TASK_INTERRUPTIBLE);
+        display_list();
         mutex_unlock(&my_mutex);
         schedule();
     }
@@ -384,14 +384,16 @@ int processor_container_switch(struct processor_container_cmd __user *user_cmd)
         {
             printk("\nInside Switch with PID : %d", pid);
             printk("\n Sleeping PID: %d -- Waking PID: %d", pid, next_task->currTask->pid);
-            mutex_unlock(&my_mutex);
-            wake_up_process(next_task->currTask);
             set_current_state(TASK_INTERRUPTIBLE);
+            wake_up_process(next_task->currTask);
+            display_list();
+            mutex_unlock(&my_mutex);
             schedule();        
         }
         else
         {
             printk("\nNo other task in container to wake for PID: %d", pid);
+            display_list();
             mutex_unlock(&my_mutex);
         }
     }
