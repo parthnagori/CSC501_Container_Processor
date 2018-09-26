@@ -218,10 +218,17 @@ struct task * get_next_task(struct task **head, int pid)
 
     
     
-    if (temp_task_head->next)
-        return temp_task_head->next;
+    if (tflag)
+    {    
+        if (temp_task_head->next)
+            return temp_task_head->next;
+        else if (temp_container)
+            return temp_container->task_list;
+        else
+            return NULL;
+    }
     else
-        return temp_container->task_list;  
+        return NULL;  
 }
 
 /**
@@ -398,7 +405,10 @@ int processor_container_switch(struct processor_container_cmd __user *user_cmd)
         }
     }
     else
-        printk("\nTask for PID: %d not found", pid);
+        {
+            printk("\nTask for PID: %d not found", pid);
+            mutex_unlock(&my_mutex);
+        }
     return 0;
 }
 
